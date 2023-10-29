@@ -18,15 +18,15 @@ class Pipeline(object):
         """
         Constructor - initializes the instantiated objects variables
         """
-        # Source: https://en.wikipedia.org/wiki/Road_signs_in_Denmark
-        self.sign_types = [
-            "local_speed_limit", "end_of_local_speed_limit", "one_way", "no_waiting", "no_waiting_arrow", "no_waiting_zone", "yield", "parking", "parking_arrow", "no_left_turn", "mandatory_direction_right", "arrow_direction_sign", "roadwork_area", "instructions_for_disabled", "no_truck"
-                          ]
-        
+
         # Image variables
         self.images = []
-        self.image_path = os.getcwd() + "/miniproject/sign_detection-main/tsign_dataset/images/evening"
+        self.image_path = "/home/simon/fs_cones"
         self.font = cv2.FONT_HERSHEY_COMPLEX
+        # self.templateGray = cv2.imread("/home/simon/cone_template.png", cv2.COLOR_BGR2GRAY)
+        self.template = cv2.imread("/home/simon/cone_template.png")
+        self.templateGray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
+
 
         # Boolean operator for debugging -> Can be changed to display processing steps
         # (Warning, this shows all masks and images + print()'s per iteration)
@@ -45,9 +45,9 @@ class Pipeline(object):
         # Thresholds for cones HSV colorspace
         self.yellow_low= (23, 51, 176) 
         self.yellow_high = (81, 243, 255)
-        self.blue_low = (90, 59, 217)
-        self.blue_high = (131, 255, 255)
 
+        self.blue_low = (77, 84, 64)
+        self.blue_high = (125, 255, 255)
 
         # Threshold for HSL (HLS)
         self.white_low = (0,240,0)
@@ -78,11 +78,17 @@ class Pipeline(object):
         self.blue_contours = 0
         
 
-        # Filtering
+        # Filtering OG
+        # self.square_kernel = np.ones((8, 8), np.uint8)
+        # self.circular_kernel_tiny = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+        # self.circular_kernel_small = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+        # self.circular_kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+
+        # Filter updated
         self.square_kernel = np.ones((8, 8), np.uint8)
-        self.circular_kernel_tiny = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+        self.circular_kernel_tiny = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(5,5))
         self.circular_kernel_small = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
-        self.circular_kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(9,9))
+        self.circular_kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
 
         self.opening = np.ndarray
         self.closing = np.ndarray
@@ -253,7 +259,7 @@ class Pipeline(object):
         else:
             # In median blurring, the central element is always replaced by some pixel value in the image. 
             # It reduces the noise effectively.
-            median = cv2.medianBlur(mask, 1)
+            median = cv2.medianBlur(mask, 3)
 
             # Opening is erosion followed by dilation. (Removes small connected components and small protrusions)
             # Closing is dilation followed by erosion. (fills in small holes and gaps between connected components)
@@ -309,17 +315,15 @@ class Pipeline(object):
             blob = self.filtered_blobs_yellow[i]   # Gets the corresponding object
             # Gets and draws the bounding box of the object on the original image
             x, y, w, h = cv2.boundingRect(blob)
-            cv2.rectangle(image, (x, y), (x+w, y+h), (255,255,0), 1)
-            
-
+            #cv2.rectangle(image, (x, y), (x+w, y+h), (255,255,0), 1)
             # Classification process
             # 0: shape, 1: circularity, 2: aspect ratio, 3: compactness, 4: color_mean, 5: yellow_percent, 6: black_percent, 7: distance to COM (bbox)
 
-            if (features[0] == 'triangle' or features[0] == 'pentagon') and features[2] < 0.85 and features[2] > 0.65 and features[5] > 39:
+            if features[2] < 0.85 and features[2] > 0.65 and features[5] > 39: #(features[0] == 'triangle' or features[0] == 'pentagon') and
                 # print(features[4])
                 text = "Yellow cone: "
                 cv2.putText(image, text , (x-10, y-10), self.font, 0.5, (0,255,255), 1, cv2.LINE_AA)
-
+                
             else:
                 text = str(features[0]) + "AR: " + str(round(features[2],2)) + "yellow: " + str(round(features[5],2)) + "blue:" + str(round(features[6],2))
                 cv2.putText(image, text, (x-15, y-10), self.font, 0.5, (0,0,0), 1, cv2.LINE_AA)
@@ -328,30 +332,72 @@ class Pipeline(object):
                     print("Unknown object")
 
 
+
         for i in range(0, len(self.filtered_blobs_blue)):
+            
             features = self.blue_features[i]     # Gets the feature vector in question
             blob = self.filtered_blobs_blue[i]   # Gets the corresponding object
             # Gets and draws the bounding box of the object on the original image
             x, y, w, h = cv2.boundingRect(blob)
-            cv2.rectangle(image, (x, y), (x+w, y+h), (255,255,0), 1)
+            h_int = int(h*1.3)
+           
+            cropped_image = self.crop_blob(x, y, h, w, h_int)
             
 
             # Classification process
             # 0: shape, 1: circularity, 2: aspect ratio, 3: compactness, 4: color_mean, 5: blue_percent, 6: white_percent, 7: distance to COM (bbox)
-        
-            if (features[0] == 'triangle' or features[0] == 'pentagon') and features[2] < 0.85 and features[2] > 0.65 and features[5] > 30:
-                # print(features[4])
-                text = "Blue cone: "
-                cv2.putText(image, text, (x-10, y-10), self.font, 0.5, (255,0,0), 1, cv2.LINE_AA)
-
-
-            else:
-                text = str(features[0]) + "AR: " + str(round(features[2],2)) + "yellow: " + str(round(features[5],2)) + "blue:" + str(round(features[6],2))
-                cv2.putText(image, text, (x-15, y-10), self.font, 0.5, (0,0,0), 1, cv2.LINE_AA)
+            # Finding cone bottoms 
+            if features[2] < 1.9 and features[2] > 1.3 and features[5] > 30: # (features[0] == 'triangle' or features[0] == 'pentagon') and
+                # do template matching
+                text = "potential cone(blue): " + str(i)
+                cv2.imshow(text, cropped_image)
+                if self.template_match(cropped_image) > 0.65:    
+                    #text = "Blue bottom: " + str(round(features[5],2))
+                    #cv2.putText(image, text, (x-10, y-h-10), self.font, 0.5, (255,0,255), 1, cv2.LINE_AA)
+                    cv2.rectangle(image, (x, y-h_int), (x+w, y+h), (255,0,0), 1)
                 
-                if (self.debugging == True):
-                    print("Unknown object")
+
+            # else:
+            #     text = str(features[0]) + "AR: " + str(round(features[2],2)) + "yellow: " + str(round(features[5],2)) + "blue:" + str(round(features[6],2))
+            #     cv2.putText(image, text, (x-15, y-10), self.font, 0.5, (0,0,0), 1, cv2.LINE_AA)
+                
+            #     if (self.debugging == True):
+            #         print("Unknown object")
         return image
+    
+
+    def crop_blob(self, x, y, h, w, h_int):
+        
+
+        if y < h_int:
+            cropped_image = self.blue_filtered[y-h:y+h, x:x+w]
+
+        else:
+            cropped_image = self.blue_filtered[y-h_int:y+h, x:x+w]
+
+        return cropped_image
+
+
+    def template_match(self, crop):  
+        w, h = crop.shape[::-1]
+        template = cv2.resize(self.templateGray, (w,h))
+
+
+
+        crop = np.float32(crop)
+        template = np.float32(template)
+
+        res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+        print(res)
+        # thresh = 0.7
+
+        # loc = np.where(res >= thresh)
+
+        # for pt in zip(*loc[::-1]):
+        #     cv2.rectangle(crop, pt, (pt[0] + w, pt[1] + h), (0,255,255), 2)
+
+        # cv2.imshow("frame", res)
+        return res
 
     def get_segment_crop(self, img,tol=0, mask=None):
         if mask is None:
@@ -505,7 +551,7 @@ class Pipeline(object):
                     #print(area)
 
                     # We filter some of the noise that persists in the filtered binary masks
-                    if area > 920:    
+                    if area > 50:  #920  
 
                         processed_cnt, shape, peri, approx = self.detect_shape(cnt)
                         
@@ -537,57 +583,88 @@ class Pipeline(object):
 
         #self.combined_mask = self.yellow_filtered + self.blue_filtered + self.white_filtered + self.black_filtered
 
-        self.yellow_cone_mask = self.yellow_filtered + self.white_filtered
-        self.blue_cone_mask = self.blue_filtered + self.black_filtered 
+        self.yellow_cone_mask = self.yellow_filtered# + self.white_filtered
+        self.blue_cone_mask = self.blue_filtered# + self.black_filtered 
 
         self.yellow_contours = self.blob_extraction(image, self.yellow_cone_mask, 'yellow')
         self.blue_contours = self.blob_extraction(image, self.blue_cone_mask, 'blue')
 
         #cv2.imshow("all blobs", self.combined_mask)
 
-        if (self.debugging == True):
-            if self.yellow_filtered is not None:
-                cv2.imshow('Filtered yellow', self.yellow_filtered)
-            if self.blue_filtered is not None:
-                cv2.imshow('Filtered blue', self.blue_filtered)
-            if self.white_filtered is not None:
-                cv2.imshow('Filtered white', self.white_filtered)
-            if self.black_filtered is not None:
-                cv2.imshow('Filtered black', self.black_filtered)
+       # if (self.debugging == True):
+        if self.yellow_filtered is not None:
+            cv2.imshow('Filtered yellow', self.yellow_filtered)
+        if self.blue_filtered is not None:
+            cv2.imshow('Filtered blue', self.blue_filtered)
+        # if self.white_filtered is not None:
+        #     cv2.imshow('Filtered white', self.white_filtered)
+        # if self.black_filtered is not None:
+        #     cv2.imshow('Filtered black', self.black_filtered)
 
         return
 
-def process_images(instance, cap, img):
-    # images = instance.get_all_images()
+def process_images(instance): #, cap, img
+    #image folder
+    images = instance.get_all_images()
 
-    # for i in images:
-    instance.reset()
-    image = instance.pre_processing(img)
-    instance.thresholding(img)
-    instance.get_objects(img)
-    classified = instance.classify(img)
+    for i in images:
+        instance.reset()
+        image = instance.pre_processing(i)
+        instance.thresholding(image)
+        instance.get_objects(image)
+        classified = instance.classify(image)
 
-    cv2.imshow('Classifier', classified)
+        cv2.imshow('Classifier', classified)  
+
+        k = cv2.waitKey(0)
+        if k == 27: #esc
+            cv2.destroyAllWindows() 
+            break
+        
+        cv2.destroyAllWindows() 
+
+
+
+
+
+
+
+
+    # #webcam
+    # instance.reset()
+    # image = instance.pre_processing(img)
+    # instance.thresholding(img)
+    # instance.get_objects(img)
+    # classified = instance.classify(img)
+
+    # cv2.imshow('Classifier', classified)
 
    
-    k = cv2.waitKey(5) & 0xFF
-    if k == 27: #esc
-        cap.release()
-        # cv2.waitKey(0) 
-        # cv2.destroyAllWindows() 
+    # k = cv2.waitKey(5) & 0xFF
+    # if k == 27: #esc
+    #     cap.release()
+    #     cv2.waitKey(0) 
+    #     cv2.destroyAllWindows() 
 
 
 # Main function. Run this to classify. Change path in get_image_paths() to your path
 def main():
     p = Pipeline()
-    # p.load_images_from_folder()
-    cap = cv2.VideoCapture(0)
-    while cap.isOpened():
-        _, image = cap.read()
-        process_images(p,cap,image)
 
-    cap.release()
-    cv2.destroyAllWindows() 
+    #image folder
+
+    p.load_images_from_folder()
+    process_images(p)
+
+
+
+    # #webcam
+    # cap = cv2.VideoCapture(0)
+    # while cap.isOpened():
+    #     _, image = cap.read()
+    #     process_images(p,cap,image)
+    # cap.release()
+    # cv2.destroyAllWindows() 
 
 
 if __name__ == '__main__':
