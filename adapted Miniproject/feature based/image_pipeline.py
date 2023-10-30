@@ -355,7 +355,7 @@ class Pipeline(object):
                     # cv2.rectangle(image, (x, y-h_int), (x+w, y+h), (0,255, 255), 1)
                     #format "(color) (centerx) (centery) (w) (h)"
                     # bbox = "1 " + str((x-w/2)/imgw) + " " + str((y-h/2)/imgh) + " " + str(w/imgw) + " " + str(h/imgh)
-                    bbox = "0 " + str(x) + " " + str(y-h_int) + " " + str(w+x) + " " + str(h+y)
+                    bbox = "1 " + str(x) + " " + str(y-h_int) + " " + str(w+x) + " " + str(h+y)
                     self.bboxes.append(bbox)
 
                 else:
@@ -771,7 +771,8 @@ def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.5):
 def process_images(instance): #, cap, img
     #image folder
     images = instance.get_all_images()
-
+    IoU = 0
+    totalIoUentries = 0
     for i, img in enumerate(images):
         # timer = time.perf_counter()
         print("NEXT")
@@ -789,6 +790,11 @@ def process_images(instance): #, cap, img
         ygtbboxes = []
         bbboxes = []
         ybboxes = []
+        blueCones = 0
+        yellowCones = 0
+        blueConesDetected = 0
+        yellowConesDetected = 0
+        AvgIoUImg = 0
         accept = False
         filename = "/home/simon/fs_cones_val/val/" + instance.get_imagename(i)
         filename = filename[:-3] + "txt"
@@ -811,6 +817,7 @@ def process_images(instance): #, cap, img
                     # tempbox = [x1, y1, x2, y2]
                     tempbox = [x1-x2, y1-y2, x1+x2, y1+y2]
                     bgtbboxes.append(tempbox)
+                    blueCones += 1
                     accept = True
                     cv2.rectangle(classified, (x1-x2, y1-y2), (x1+x2, y1+y2), (0,0,0), 1)
                 elif words[0] == "1":
@@ -822,6 +829,7 @@ def process_images(instance): #, cap, img
                     # tempbox = [x1, y1, x2, y2]
                     tempbox = [x1-x2, y1-y2, x1+x2, y1+y2]
                     ygtbboxes.append(tempbox)
+                    yellowCones += 1
                     accept = True
                     cv2.rectangle(classified, (x1-x2, y1-y2), (x1+x2, y1+y2), (0,0,0), 1)     
         file.close()   
@@ -831,8 +839,10 @@ def process_images(instance): #, cap, img
             coords = [int(num) for num in nums[1:]]
             if nums[0] == "0":
                 bbboxes.append(coords)
+                # blueConesDetected += 1
                 cv2.rectangle(image, (coords[0], coords[1]), (coords[2], coords[3]), (255,0,0), 1)
             elif nums[0] == "1":
+                # yellowConesDetected +=1
                 ybboxes.append(coords)
                 cv2.rectangle(image, (coords[0], coords[1]), (coords[2], coords[3]), (0,255,255), 1)
 
@@ -842,19 +852,31 @@ def process_images(instance): #, cap, img
             # print(bgtbboxes)
             # print(ygtbboxes)
 
-            print(match_bboxes(bgtbboxes, bbboxes))
-
-            # for gtbox in bgtbboxes:
-            #     for box in bbboxes:
-            #         # print(bbox_iou(gtbox, box))
-            #         # if bbox_iou(gtbox, box) > 0.5:
-            #             print(match_bboxes(gtbox, box))
+            blueconfusius = match_bboxes(bgtbboxes, bbboxes)
+            print(blueconfusius)
+            yellowconfusius = match_bboxes(ygtbboxes, ybboxes)
+            # print(yellowconfusius[2])
 
 
+            for x in blueconfusius[2]:
+                AvgIoUImg += x
+                totalIoUentries += 1
+
+            for x in yellowconfusius[2]:
+                AvgIoUImg += x
+                totalIoUentries += 1
+
+            
+            
+            if 0 < (len(blueconfusius[2]) + len(yellowconfusius[2])):
+                IoU += AvgIoUImg
+                AvgIoUImg = AvgIoUImg / (len(blueconfusius[2]) + len(yellowconfusius[2]))
+
+                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% Cones detected/GT: " + str(len(blueconfusius[0])+len(yellowconfusius[0])) + "/" + str(yellowCones+blueCones))
 
 
 
-        
+            
 
         cv2.imshow(instance.get_imagename(i), classified)  
 
@@ -865,6 +887,8 @@ def process_images(instance): #, cap, img
         
         cv2.destroyAllWindows() 
 
+    IoU = IoU / totalIoUentries
+    print("IoU: " + str(IoU))
 
 
 
