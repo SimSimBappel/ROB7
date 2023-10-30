@@ -794,6 +794,8 @@ def process_images(instance): #, cap, img
         yellowCones = 0
         blueConesDetected = 0
         yellowConesDetected = 0
+        blueconfusius = []
+        yellowconfusius = []
         AvgIoUImg = 0
         accept = False
         filename = "/home/simon/fs_cones_val/val/" + instance.get_imagename(i)
@@ -839,10 +841,10 @@ def process_images(instance): #, cap, img
             coords = [int(num) for num in nums[1:]]
             if nums[0] == "0":
                 bbboxes.append(coords)
-                # blueConesDetected += 1
+                blueConesDetected += 1
                 cv2.rectangle(image, (coords[0], coords[1]), (coords[2], coords[3]), (255,0,0), 1)
             elif nums[0] == "1":
-                # yellowConesDetected +=1
+                yellowConesDetected +=1
                 ybboxes.append(coords)
                 cv2.rectangle(image, (coords[0], coords[1]), (coords[2], coords[3]), (0,255,255), 1)
 
@@ -870,9 +872,13 @@ def process_images(instance): #, cap, img
             
             if 0 < (len(blueconfusius[2]) + len(yellowconfusius[2])):
                 IoU += AvgIoUImg
-                AvgIoUImg = AvgIoUImg / (len(blueconfusius[2]) + len(yellowconfusius[2]))
+                TP = len(blueconfusius[0])+len(yellowconfusius[0])
+                AvgIoUImg = AvgIoUImg / TP
 
-                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% Cones detected/GT: " + str(len(blueconfusius[0])+len(yellowconfusius[0])) + "/" + str(yellowCones+blueCones))
+                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(yellowCones+blueCones-TP) + " FP: " + str(yellowConesDetected+blueConesDetected-TP))
+
+            else:
+                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(0) + " FN: " + str(yellowCones+blueCones))
 
 
 
