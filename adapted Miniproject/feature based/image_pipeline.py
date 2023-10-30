@@ -28,7 +28,8 @@ class Pipeline(object):
         self.image_path = "/home/simon/fs_cones_val/val_images" #real data set
         self.font = cv2.FONT_HERSHEY_COMPLEX
         # self.templateGray = cv2.imread("/home/simon/cone_template.png", cv2.COLOR_BGR2GRAY)
-        self.template = cv2.imread("/home/simon/cone_template3.png")
+
+        self.template = cv2.imread("/home/simon/Desktop/ROB7/template.png")
         self.templateGray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
 
@@ -331,7 +332,7 @@ class Pipeline(object):
             x, y, w, h = cv2.boundingRect(blob)
             h_int = int(h*1.3)
             # cropped_image = self.crop_blob(x, y, h, w, h_int)
-        
+            
             # Classification process
             # 0: shape, 1: circularity, 2: aspect ratio, 3: compactness, 4: color_mean, 5: yellow_percent, 6: black_percent, 7: distance to COM (bbox)
 
@@ -394,6 +395,8 @@ class Pipeline(object):
             else:
                 cropped_image = self.blue_filtered[y-h_int:y+h, x:x+w]
 
+            # cv2.imshow("crop", cropped_image)
+            # cv2.waitKey(0) 
             # Classification process
             # 0: shape, 1: circularity, 2: aspect ratio, 3: compactness, 4: color_mean, 5: blue_percent, 6: white_percent, 7: distance to COM (bbox)
             # Finding cone bottoms 
@@ -454,6 +457,10 @@ class Pipeline(object):
 
             res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
             
+
+
+
+
             # thresh = 0.7
 
             # loc = np.where(res >= thresh)
