@@ -873,12 +873,17 @@ def process_images(instance): #, cap, img
             if 0 < (len(blueconfusius[2]) + len(yellowconfusius[2])):
                 IoU += AvgIoUImg
                 TP = len(blueconfusius[0])+len(yellowconfusius[0])
+                FN = yellowCones+blueCones-TP
+                FP = yellowConesDetected+blueConesDetected-TP
                 AvgIoUImg = AvgIoUImg / TP
 
-                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(yellowCones+blueCones-TP) + " FP: " + str(yellowConesDetected+blueConesDetected-TP))
+                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(FN) + " FP: " + str(FP))
 
             else:
-                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(0) + " FN: " + str(yellowCones+blueCones))
+                TP = len(blueconfusius[0])+len(yellowconfusius[0])
+                FN = yellowCones+blueCones-TP
+                FP = yellowConesDetected+blueConesDetected-TP
+                print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(FN) + " FP: " + str(FP))
 
 
 
