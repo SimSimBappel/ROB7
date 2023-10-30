@@ -24,7 +24,8 @@ class Pipeline(object):
         self.imagenames = []
         # Image variables
         self.images = []
-        self.image_path = "/home/simon/fs_cones"
+        # self.image_path = "/home/simon/fs_cones" #testing
+        self.image_path = "/home/simon/fs_cones_val/val_images" #real data set
         self.font = cv2.FONT_HERSHEY_COMPLEX
         # self.templateGray = cv2.imread("/home/simon/cone_template.png", cv2.COLOR_BGR2GRAY)
         self.template = cv2.imread("/home/simon/cone_template3.png")
@@ -443,24 +444,26 @@ class Pipeline(object):
 
     def template_match(self, crop):  
         w, h = crop.shape[::-1]
-        template = cv2.resize(self.templateGray, (w,h))
+        if w > 0 and h > 0:
+            template = cv2.resize(self.templateGray, (w,h))
 
 
 
-        crop = np.float32(crop)
-        template = np.float32(template)
+            crop = np.float32(crop)
+            template = np.float32(template)
 
-        res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
-        
-        # thresh = 0.7
+            res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+            
+            # thresh = 0.7
 
-        # loc = np.where(res >= thresh)
+            # loc = np.where(res >= thresh)
 
-        # for pt in zip(*loc[::-1]):
-        #     cv2.rectangle(crop, pt, (pt[0] + w, pt[1] + h), (0,255,255), 2)
+            # for pt in zip(*loc[::-1]):
+            #     cv2.rectangle(crop, pt, (pt[0] + w, pt[1] + h), (0,255,255), 2)
 
-        # cv2.imshow("frame", template)
-        return res#, template
+            # cv2.imshow("frame", template)
+            return res#, template
+        return 0
 
     def get_segment_crop(self, img,tol=0, mask=None):
         if mask is None:
@@ -770,9 +773,12 @@ def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.5):
 
 def process_images(instance): #, cap, img
     #image folder
+    debug = False
     images = instance.get_all_images()
     IoU = 0
     totalIoUentries = 0
+    #TP FN FP
+    metrics = [0,0,0]
     for i, img in enumerate(images):
         # timer = time.perf_counter()
         print("NEXT")
@@ -875,6 +881,8 @@ def process_images(instance): #, cap, img
                 TP = len(blueconfusius[0])+len(yellowconfusius[0])
                 FN = yellowCones+blueCones-TP
                 FP = yellowConesDetected+blueConesDetected-TP
+                for i in range(3):
+                    metrics[i] += [TP, FN, FP][i]
                 AvgIoUImg = AvgIoUImg / TP
 
                 print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(FN) + " FP: " + str(FP))
@@ -883,23 +891,25 @@ def process_images(instance): #, cap, img
                 TP = len(blueconfusius[0])+len(yellowconfusius[0])
                 FN = yellowCones+blueCones-TP
                 FP = yellowConesDetected+blueConesDetected-TP
+                for i in range(3):
+                    metrics[i] += [TP, FN, FP][i]
                 print("Avg IoU on image " + str(round(AvgIoUImg, 3)) + "% TP: " + str(TP) + " FN: " + str(FN) + " FP: " + str(FP))
 
 
 
             
+        if debug:
+            cv2.imshow(instance.get_imagename(i), classified)  
 
-        cv2.imshow(instance.get_imagename(i), classified)  
-
-        k = cv2.waitKey(0)
-        if k == 27: #esc
+            k = cv2.waitKey(0)
+            if k == 27: #esc
+                cv2.destroyAllWindows() 
+                break
+            
             cv2.destroyAllWindows() 
-            break
-        
-        cv2.destroyAllWindows() 
 
     IoU = IoU / totalIoUentries
-    print("IoU: " + str(IoU))
+    print("IoU: " + str(IoU) + "metrics: " + str(metrics))
 
 
 
@@ -929,10 +939,10 @@ def main():
     p = Pipeline()
 
     #image folder
-
+    timer = time.perf_counter()
     p.load_images_from_folder()
     process_images(p)
-
+    print("Time to run: " + str(round((time.perf_counter() - timer),3)) + "s")
     
 
     # #webcam
