@@ -29,7 +29,7 @@ class Pipeline(object):
         self.font = cv2.FONT_HERSHEY_COMPLEX
         # self.templateGray = cv2.imread("/home/simon/cone_template.png", cv2.COLOR_BGR2GRAY)
 
-        self.template = cv2.imread("/home/simon/Desktop/ROB7/template.png")
+        self.template = cv2.imread("/home/simon/Desktop/ROB7/adapted Miniproject/feature based/template.png")
         self.templateGray = cv2.cvtColor(self.template, cv2.COLOR_BGR2GRAY)
 
 
@@ -243,8 +243,10 @@ class Pipeline(object):
     def pre_processing(self, image):
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
 
-        R, G, B = cv2.split(image)
 
+        #This part is appllied wrong read: https://www.geeksforgeeks.org/clahe-histogram-eqalization-opencv/
+        R, G, B = cv2.split(image)
+        
         equalized_R = clahe.apply(R)
         equalized_G = clahe.apply(G)
         equalized_B = clahe.apply(B)
@@ -262,7 +264,7 @@ class Pipeline(object):
             cv2.imshow('CLAHE [Histogram]', CLAHE_hist)
             cv2.imshow('Further edited [histogram]', edited_hist)
 
-        return edited
+        return edited #CLAHE_image
 
     def morphology_filter(self, mask):
         if mask is None:
@@ -350,7 +352,7 @@ class Pipeline(object):
 
             if features[2] < 2.1 and features[2] > 1.2 and features[5] > 30:
                 res = self.template_match(cropped_image)
-                if res > 0.6:    
+                if res > 0.75:    
                     #text = "Blue bottom: " + str(round(features[5],2))
                     # text = "res: " + str(res)
                     # cv2.putText(image, text, (x-10, y-h-10), self.font, 0.5, (255,0,255), 1, cv2.LINE_AA)
@@ -403,7 +405,7 @@ class Pipeline(object):
             if features[2] < 2.1 and features[2] > 1.2 and features[5] > 30: # (features[0] == 'triangle' or features[0] == 'pentagon') and
                 res= self.template_match(cropped_image)
 
-                if res > 0.6:    
+                if res > 0.75:    
                     #text = "Blue bottom: " + str(round(features[5],2))
                     # text = "res: " + str(res)
                     # cv2.putText(image, text, (x-10, y-h-10), self.font, 0.5, (255,0,255), 1, cv2.LINE_AA)
@@ -455,8 +457,8 @@ class Pipeline(object):
             crop = np.float32(crop)
             template = np.float32(template)
 
-            res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
-            
+            # res = cv2.matchTemplate(crop, template, cv2.TM_CCOEFF_NORMED)
+            res = cv2.matchTemplate(crop, template, cv2.TM_CCORR_NORMED)
 
 
 
