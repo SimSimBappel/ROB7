@@ -418,7 +418,7 @@ class Pipeline(object):
 
 
                 else:
-                    continue
+                    # continue
                     # text = "res: " + str(res)
                     # cv2.putText(image, text, (x-15, y-10), self.font, 0.5, (0,0,0), 1, cv2.LINE_AA)
                     cv2.rectangle(image, (x, y-h), (x+w, y+h), (0,0,255), 1)
@@ -782,7 +782,7 @@ def match_bboxes(bbox_gt, bbox_pred, IOU_THRESH=0.5):
 
 def process_images(instance): #, cap, img
     #image folder
-    debug = False
+    debug = True
     images = instance.get_all_images()
     IoU = 0
     totalIoUentries = 0
